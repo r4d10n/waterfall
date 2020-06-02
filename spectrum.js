@@ -116,6 +116,10 @@ Spectrum.prototype.drawSpectrum = function(bins) {
     if (this.maxHold)
         this.drawFFT(this.binsMax);
 
+    // Do autoscale axes
+    if (this.autoScale)
+        this.doAutoScale(bins);
+
     // Draw FFT bins
     this.drawFFT(bins);
 
@@ -242,7 +246,7 @@ Spectrum.prototype.setSpectrumPercent = function(percent) {
 
 Spectrum.prototype.incrementSpectrumPercent = function() {
     if (this.spectrumPercent + this.spectrumPercentStep <= 100) {
-        this.setSpectrumPercent(this.spectrumPercent + this.spectrumPercentStep);
+        this.setSpectrumPercent(this.spectrumPercent + this.spectrumPercentStep);        
     }
 }
 
@@ -283,6 +287,14 @@ Spectrum.prototype.rangeDecrease = function() {
         this.setRange(this.min_db + 5, this.max_db - 5);
 }
 
+Spectrum.prototype.doAutoScale = function(bins) {
+    var maxbinval = Math.max(...bins);
+    var minbinval = Math.min(...bins);
+          
+    this.setRange(Math.ceil(minbinval * 0.075) * 10, Math.ceil(maxbinval * 0.075) * 10);  // 75% to nearest 10
+    this.toggleAutoScale();      
+}
+
 Spectrum.prototype.setCenterHz = function(hz) {
     this.centerHz = hz;
     this.updateAxes();
@@ -300,6 +312,12 @@ Spectrum.prototype.setAveraging = function(num) {
     }
 }
 
+Spectrum.prototype.setTuningStep = function(num) {
+    if (num > 0 && num < 10e6) 
+        this.tuningStep = num;
+    this.log("Step: " + this.tuningStep);         
+}
+
 Spectrum.prototype.incrementAveraging = function() {
     this.setAveraging(this.averaging + 1);
 }
@@ -307,6 +325,52 @@ Spectrum.prototype.incrementAveraging = function() {
 Spectrum.prototype.decrementAveraging = function() {
     if (this.averaging > 0) {
         this.setAveraging(this.averaging - 1);
+    }
+}
+
+Spectrum.prototype.incrementFrequency = function() { 
+    var freq = { freq : this.centerHz + this.tuningStep };
+    this.ws.send(JSON.stringify(freq));               
+}
+
+Spectrum.prototype.decrementFrequency = function() { 
+    var freq = { freq : this.centerHz - this.tuningStep};       
+    this.ws.send(JSON.stringify(freq));                
+}
+
+Spectrum.prototype.incrementGain = function() { 
+    var freq = { freq : this.centerHz + this.tuningStep };
+    this.ws.send(JSON.stringify(freq));               
+}
+
+Spectrum.prototype.decrementTuningStep = function() {  // 1ex, 2.5ex, 5ex
+    if (this.tuningStep > 1) {
+        
+        var step;
+        var firstDigit = parseInt(this.tuningStep / Math.pow(10, parseInt(Math.log10(this.tuningStep))));
+        
+        if (firstDigit == 2) 
+            step = 2.5;
+        else 
+            step = 2;
+        
+        this.setTuningStep(this.tuningStep / step);
+    }
+}
+
+Spectrum.prototype.incrementTuningStep = function() {
+    if (this.tuningStep > 0) {
+
+        var step;
+        var firstDigit = parseInt(this.tuningStep / Math.pow(10, parseInt(Math.log10(this.tuningStep))));
+        
+        if (firstDigit > 1) 
+            step = 2;
+        else 
+            step = 2.5;
+        
+        this.setTuningStep(this.tuningStep * step);
+        
     }
 }
 
@@ -323,8 +387,25 @@ Spectrum.prototype.setMaxHold = function(maxhold) {
     this.binsMax = undefined;
 }
 
+Spectrum.prototype.setAutoScale = function(autoscale) {
+    this.autoScale = autoscale;    
+}
+
 Spectrum.prototype.toggleMaxHold = function() {
     this.setMaxHold(!this.maxHold);
+}
+
+Spectrum.prototype.toggleAutoScale = function() {
+    this.setAutoScale(!this.autoScale);
+}
+
+Spectrum.prototype.log = function(message) {
+    this.logger.innerHTML += message + '<br/>';
+    this.logger.scrollTop = this.logger.scrollHeight; 
+}
+
+Spectrum.prototype.setWebSocket = function(ws) {
+    this.ws = ws;
 }
 
 Spectrum.prototype.toggleFullscreen = function() {
@@ -354,30 +435,65 @@ Spectrum.prototype.toggleFullscreen = function() {
 }
 
 Spectrum.prototype.onKeypress = function(e) {
-    if (e.key == " ") {
-        this.togglePaused();
-    } else if (e.key == "f") {
-        this.toggleFullscreen();
-    } else if (e.key == "c") {
-        this.toggleColor();
-    } else if (e.key == "ArrowUp") {
-        this.rangeUp();
-    } else if (e.key == "ArrowDown") {
-        this.rangeDown();
-    } else if (e.key == "ArrowLeft") {
-        this.rangeDecrease();
-    } else if (e.key == "ArrowRight") {
-        this.rangeIncrease();
-    } else if (e.key == "s") {
-        this.incrementSpectrumPercent();
-    } else if (e.key == "w") {
-        this.decrementSpectrumPercent();
-    } else if (e.key == "+") {
-        this.incrementAveraging();
-    } else if (e.key == "-") {
-        this.decrementAveraging();
-    } else if (e.key == "m") {
-        this.toggleMaxHold();
+
+    switch (e.key) {        
+        case " ": 
+            this.togglePaused();
+            break; 
+        case "S":
+            this.toggleFullscreen();
+            break;
+        case "c":
+            this.toggleColor();
+            break;
+        case "ArrowUp":
+            this.rangeUp();
+            break;
+        case "ArrowDown":
+            this.rangeDown();
+            break;
+        case "ArrowLeft":
+            this.rangeDecrease();
+            break;
+        case "ArrowRight":
+            this.rangeIncrease();
+            break;
+        case "s":
+            this.incrementSpectrumPercent();
+            break;
+        case "w":
+            this.decrementSpectrumPercent();
+            break;
+        case "+":
+            this.incrementAveraging();
+            break;
+        case "-":
+            this.decrementAveraging();
+            break;
+        case "m":
+            this.toggleMaxHold();
+            break;
+        case "a":
+            this.toggleAutoScale();
+            break;
+        case "f":
+            this.decrementFrequency();
+            break;
+        case "F":
+            this.incrementFrequency();
+            break;
+        case "g":
+            this.decrementGain();
+            break;
+        case "G":
+            this.incrementGain();
+            break;
+        case "t":
+            this.decrementTuningStep();
+            break;
+        case "T":
+            this.incrementTuningStep();
+            break;
     }
 }
 
@@ -391,13 +507,19 @@ function Spectrum(id, options) {
     this.spectrumPercentStep = (options && options.spectrumPercentStep) ? options.spectrumPercentStep : 5;
     this.averaging = (options && options.averaging) ? options.averaging : 0;
     this.maxHold = (options && options.maxHold) ? options.maxHold : false;
+    this.autoScale = (options && options.autoScale) ? options.autoScale : false;
 
+    this.logger = (options && options.logger) ? document.getElementById(options.logger) : document.getElementById('log');
+    
     // Setup state
     this.paused = false;
     this.fullscreen = false;
     this.min_db = -120;
     this.max_db = -20;
     this.spectrumHeight = 0;
+    this.tuningStep = 100000;
+    this.maxbinval = 0;
+    this.minbinval = 0;
 
     // Colors
     this.colorindex = 0;

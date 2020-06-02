@@ -1,7 +1,13 @@
 'use strict';
 
+var spectrum, logger, ws;
+
 function connectWebSocket(spectrum) {
-    var ws = new WebSocket("ws://" + window.location.host + "/websocket");
+
+    ws = new WebSocket("ws://" + window.location.host + "/websocket");
+
+    spectrum.setWebSocket(ws);
+  
     ws.onopen = function(evt) {
         console.log("connected!");
     }
@@ -21,19 +27,24 @@ function connectWebSocket(spectrum) {
         } else {
             if (data.center) {
                 spectrum.setCenterHz(data.center);
+                spectrum.log("Freq:" + data.center);
             }
             if (data.span) {
                 spectrum.setSpanHz(data.span);
+                spectrum.log("Span: " + data.span);
             }
         }
     }
 }
 
+
 function main() {
+    
     // Create spectrum object on canvas with ID "waterfall"
-    var spectrum = new Spectrum(
+    spectrum = new Spectrum(
         "waterfall", {
-            spectrumPercent: 20
+            spectrumPercent: 50,
+            logger: 'log',            
     });
 
     // Connect to websocket
@@ -43,6 +54,8 @@ function main() {
     window.addEventListener("keydown", function (e) {
         spectrum.onKeypress(e);
     });
+
+    
 }
 
 window.onload = main;
