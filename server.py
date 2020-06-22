@@ -79,6 +79,7 @@ def set_frequency(freq):            #handle UHD
 
 def set_span(span):
     if span > 3e6 and span < 61e6:
+        opts['span'] = span
         update_opts()
 
 def set_gain(gain):
