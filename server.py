@@ -75,12 +75,10 @@ def static(filename):
 def set_frequency(freq):            #handle UHD
     if freq > 70e6 and freq < 6e9:
         opts['center'] = freq
-        print ("freq: " + str(freq))
         update_opts()
 
 def set_span(span):
     if span > 3e6 and span < 61e6:
-        opts['span'] = span
         update_opts()
 
 def set_gain(gain):
@@ -89,13 +87,14 @@ def set_gain(gain):
         update_opts()
 
 def set_fps(fps):
-    if fps > 0 and fps < 2000:
+    if fps > 0 and fps < 200:
         opts['framerate'] = fps
         update_opts()
         
 def update_opts():                  # handle UHD
     tb.set_source_params(opts)
     tb.set_fft_params(opts)
+    print(" > Freq:" + str(opts['center']) + " | Span: " + str(opts['span']) + " | Gain: " + str(opts['gain']) + " | Fps: " + str(opts['framerate']) + "\n")
     wsock.send(json.dumps(opts))    
     
 class fft_broadcast_sink(gr.sync_block):
@@ -166,7 +165,7 @@ class fft_receiver(gr.top_block):
         tic = time.time()                           # optimize tune time with direct IIO tune functions
         self.pluto_source.set_params(int(opts['center']), int(opts['span']), int(opts['bw']), True, True, True, "manual", int(opts['gain']), '', True)
         toc = time.time()
-        print("Setting Pluto parameters in " + str(toc-tic) + " secs...\n")
+        print("Updated Pluto parameters in [" + str(toc-tic) + "] secs...\n")
 
     def set_fft_params(self, opts):
         self.fft.set_sample_rate(opts['span'])

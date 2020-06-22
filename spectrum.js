@@ -31,10 +31,21 @@ Spectrum.prototype.addWaterfallRow = function(bins) {
     this.ctx_wf.drawImage(this.ctx_wf.canvas,
         0, 0, this.wf_size, this.wf_rows - 1,
         0, 1, this.wf_size, this.wf_rows - 1);
+    
+    this.wfrowcount++;
 
     // Draw new line on waterfall canvas
     this.rowToImageData(bins);
     this.ctx_wf.putImageData(this.imagedata, 0, 0);
+
+    if (this.wfrowcount % 100 == 0)
+    {
+        var timeString = new Date().toLocaleTimeString();
+        this.ctx_wf.font = "30px sans-serif";
+        this.ctx_wf.fillStyle = "white";
+        this.ctx_wf.textBaseline = "top";
+        this.ctx_wf.fillText(timeString, 0, 0); // TODO: Fix font scaling
+    }
 
     var width = this.ctx.canvas.width;
     var height = this.ctx.canvas.height;
@@ -305,6 +316,16 @@ Spectrum.prototype.setSpanHz = function(hz) {
     this.updateAxes();
 }
 
+Spectrum.prototype.setGain = function(gain) {
+    this.gain = gain;
+    this.updateAxes();
+}
+
+Spectrum.prototype.setFps = function(fps) {
+    this.fps = fps;
+    this.updateAxes();
+}
+
 Spectrum.prototype.setAveraging = function(num) {
     if (num >= 0) {
         this.averaging = num;
@@ -339,8 +360,23 @@ Spectrum.prototype.decrementFrequency = function() {
 }
 
 Spectrum.prototype.incrementGain = function() { 
-    var freq = { freq : this.centerHz + this.tuningStep };
-    this.ws.send(JSON.stringify(freq));               
+    var gain = { gain : this.gain + 1 };
+    this.ws.send(JSON.stringify(gain));               
+}
+
+Spectrum.prototype.decrementGain = function() { 
+    var gain = { gain : this.gain - 1 };
+    this.ws.send(JSON.stringify(gain));               
+}
+
+Spectrum.prototype.incrementFps = function() { 
+    var fps = { fps : this.fps + 5 };
+    this.ws.send(JSON.stringify(fps));               
+}
+
+Spectrum.prototype.decrementFps = function() { 
+    var fps = { fps : this.fps - 5 };
+    this.ws.send(JSON.stringify(fps));               
 }
 
 Spectrum.prototype.decrementTuningStep = function() {  // 1ex, 2.5ex, 5ex
@@ -374,6 +410,14 @@ Spectrum.prototype.incrementTuningStep = function() {
     }
 }
 
+Spectrum.prototype.downloadWFImage = function(){
+    var link = document.createElement('a');
+    var dateString = new Date().toISOString().replace(/:/g,'-');
+    link.download = 'capture-' + dateString + '.png';
+    link.href = this.wf.toDataURL();
+    link.click();
+}
+
 Spectrum.prototype.setPaused = function(paused) {
     this.paused = paused;
 }
@@ -400,7 +444,7 @@ Spectrum.prototype.toggleAutoScale = function() {
 }
 
 Spectrum.prototype.log = function(message) {
-    this.logger.innerHTML += message + '<br/>';
+    this.logger.innerHTML = message + '<br/>';
     this.logger.scrollTop = this.logger.scrollHeight; 
 }
 
@@ -458,7 +502,7 @@ Spectrum.prototype.onKeypress = function(e) {
         case "ArrowRight":
             this.rangeIncrease();
             break;
-        case "s":
+        case "W":
             this.incrementSpectrumPercent();
             break;
         case "w":
@@ -488,11 +532,20 @@ Spectrum.prototype.onKeypress = function(e) {
         case "G":
             this.incrementGain();
             break;
+        case "p":
+            this.decrementFps();
+            break;
+        case "P":
+            this.incrementFps();
+            break;
         case "t":
             this.decrementTuningStep();
             break;
         case "T":
             this.incrementTuningStep();
+            break;
+        case "d":
+            this.downloadWFImage();
             break;
     }
 }
@@ -501,6 +554,8 @@ function Spectrum(id, options) {
     // Handle options
     this.centerHz = (options && options.centerHz) ? options.centerHz : 0;
     this.spanHz = (options && options.spanHz) ? options.spanHz : 0;
+    this.gain = (options && options.gain) ? options.gain : 0;
+    this.fps = (options && options.fps) ? options.fps : 0;
     this.wf_size = (options && options.wf_size) ? options.wf_size : 0;
     this.wf_rows = (options && options.wf_rows) ? options.wf_rows : 2048;
     this.spectrumPercent = (options && options.spectrumPercent) ? options.spectrumPercent : 25;
@@ -520,6 +575,7 @@ function Spectrum(id, options) {
     this.tuningStep = 100000;
     this.maxbinval = 0;
     this.minbinval = 0;
+    this.wfrowcount = 0;
 
     // Colors
     this.colorindex = 0;

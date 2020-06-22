@@ -27,12 +27,17 @@ function connectWebSocket(spectrum) {
         } else {
             if (data.center) {
                 spectrum.setCenterHz(data.center);
-                spectrum.log("Freq:" + data.center);
             }
             if (data.span) {
                 spectrum.setSpanHz(data.span);
-                spectrum.log("Span: " + data.span);
             }
+            if (data.gain) {
+                spectrum.setGain(data.gain);
+            }
+            if (data.framerate) {
+                spectrum.setFps(data.framerate);
+            }
+            spectrum.log(" > Freq:" + data.center / 1000000 + " MHz | Span: " + data.span / 1000000 + " MHz | Gain: " + data.gain + "dB | Fps: " + data.framerate);
         }
     }
 }
